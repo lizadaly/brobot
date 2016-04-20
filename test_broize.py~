@@ -1,0 +1,9 @@
+import pytest
+
+from broize import *
+
+def test_random_utterance():
+    random.seed(0)
+    sent = "abcd"  # Something unparseable
+    resp = broback(sent)
+    assert sent == NOOP_RESPONSES[0]

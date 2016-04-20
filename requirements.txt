@@ -1,0 +1,4 @@
+requests
+tweepy
+textblob
+pytest
