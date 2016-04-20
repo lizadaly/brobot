@@ -20,7 +20,7 @@ def test_contains_reference_to_bot():
     random.seed(0)
     sent = "You are lame"
     resp = broback(sent)
-    assert resp == COMMENTS_ABOUT_SELF[1]
+    assert resp == 'I consider myself to be a lamepreneur'
 
 def test_reuses_subject():
     """If the user tells us about some kind of subject, we should mention it in our response"""
@@ -32,7 +32,7 @@ def test_strip_offensive_words():
     """Don't allow the bot to respond with anything obviously offensive"""
     # To avoid including an offensive word in the test set, add a harmless word temporarily
     from config import FILTER_WORDS
-    FILTER_WORDS.add('snakepeople')
+    FILTER_WORDS.add('snakeperson')
     sent = "I am a snakeperson"
     with pytest.raises(UnacceptableUtteranceException):
         broback(sent)
