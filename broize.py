@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import random
 from textblob import TextBlob, Word
 from config import FILTER_WORDS
@@ -7,29 +9,37 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 # Sentences we'll respond with if we have no idea what the user is going to say
-NOOP_RESPONSES = (
-    "Yeah it's not that simple",
-)
+NOOP_RESPONSES = [
+    u"Yeah it's not that simple",
+    u"sorry not sorry",
+    u"i have mad react skills",
+    u"code hard bro",
+    u"Want to bro down and crush code?",
+]
 
 # If the user tries to tell us something about ourselves
-COMMENTS_ABOUT_SELF = (
-    "You're just jealous",
-    "I worked really hard on that",
-    "My Klout score is {}".format(random.randint(100, 500)),
-)
+COMMENTS_ABOUT_SELF = [
+    u"You're just jealous",
+    u"I worked really hard on that",
+    u"My Klout score is {}".format(random.randint(100, 500)),
+]
 
-SELF_VERBS_WITH_DOBJECT = (
-    'I know a lot about {dobject}',
-    'I really consider myself an expert on {dobject}',
-    'My last startup totally crushed the {dobject} vertical',
-    'Were you aware I was a serial entrepreneur in the {dobject} sector'
-    'Let me tell about how I intend to disrupt {dobject}',
-    "My startup is really more like Uber for {dobject}",
-)
-SELF_VERBS_WITH_ADJECTIVE = (
-    "I'm personally building the {adjective} Economy",
-    "I consider myself to be a {adjective}preneur",
-)
+SELF_VERBS_WITH_DOBJECT_CAPS_PLURAL = [
+    u'My last startup totally crushed the {dobject} vertical',
+    u'Were you aware I was a serial entrepreneur in the {dobject} sector?',
+    u"My startup is Uber for {dobject}",
+    u'I really consider myself an expert on {dobject}',
+]
+
+SELF_VERBS_WITH_DOBJECT_LOWER = [
+    u'Yeah but I know a lot about {dobject}',
+    u'My bros always ask me about {dobject}',
+]
+
+SELF_VERBS_WITH_ADJECTIVE = [
+    u"I'm personally building the {adjective} Economy",
+    u"I consider myself to be a {adjective}preneur",
+]
 
 # Raise this (uncaught) exception if the response was going to trigger our blacklist
 class UnacceptableUtteranceException(Exception):
@@ -58,7 +68,7 @@ def find_subject(sent):
         elif p == 'PRP' and w == 'You':
             subject = 'REFERS_TO_SELF'
     if subject:
-        logging.debug("Found subject: {}".format(subject))
+        logging.debug(u"Found subject: %s", subject)
     return subject
 
 def find_object(sent):
@@ -75,7 +85,7 @@ def find_object(sent):
                 dobject = w
                 break
     if dobject:
-        logging.debug("Found dobject: {}".format(dobject))
+        logging.debug(u"Found dobject: %s", dobject)
 
     return dobject
 
@@ -102,7 +112,7 @@ def find_verb(sent, subject=None, dobject=None):
             pos = p
             break
     if verb:
-        logging.debug("Found verb: {}".format(verb))
+        logging.debug(u"Found verb: %s", verb)
     return verb, pos
 
 def construct_response(subject, dobject, verb, verb_pos, adjective):
@@ -115,20 +125,20 @@ def construct_response(subject, dobject, verb, verb_pos, adjective):
     # from the user, or 'you' or 'I', in which case we might need to change the tense for some
     # irregular verbs.
     if verb:
-        if verb.lemma == 'be':
-            if subject.lower() == 'you':
+        if verb.lemma == u'be':
+            if subject.lower() == u'you':
                 # The bot will always tell the person they aren't whatever they said they were
-                resp.append("aren't really")
+                resp.append(u"aren't really")
             else:
                 resp.append(verb)
     if dobject:
         if starts_with_vowel(dobject):
-            resp.append("an")
+            resp.append(u"an")
         else:
-            resp.append("a")
+            resp.append(u"a")
         resp.append(dobject)
 
-    resp.append(random.choice(("tho", "bro", "lol", "bruh", "smh", "")))
+    resp.append(random.choice((u"tho", u"bro", u"lol", u"bruh", u"smh", u"")))
 
     if len(resp) > 0:
         return " ".join(resp)
@@ -154,11 +164,14 @@ def respond(sentence):
 
     # If we said something about the bot and used some kind of direct object, construct the
     # sentence around that
-    logging.debug("Subject={}, dobject={}, adjective={}".format(subject, dobject, adjective))
+    logging.debug("Subject=%s, dobject=%s, adjective=%s", subject, dobject, adjective)
 
-    if subject == 'REFERS_TO_SELF' and (dobject or adjective):
+    if subject == u'REFERS_TO_SELF' and (dobject or adjective):
         if dobject:
-            resp = random.choice(SELF_VERBS_WITH_DOBJECT).format(**{'dobject': dobject})
+            if random.choice((True, False)):
+                resp = random.choice(SELF_VERBS_WITH_DOBJECT_CAPS_PLURAL).format(**{'dobject': dobject.pluralize().capitalize()})
+            else:
+                resp = random.choice(SELF_VERBS_WITH_DOBJECT_LOWER).format(**{'dobject': dobject})
         else:
             resp = random.choice(SELF_VERBS_WITH_ADJECTIVE).format(**{'adjective': adjective})
     else:
@@ -166,11 +179,10 @@ def respond(sentence):
             verb, verb_pos = find_verb(sent)
 
     if not resp:
-        logging.debug("Subject={}, dobject={}, verb={}, verb_pos={}".format(subject, dobject, verb, verb_pos))
         # If we didn't override the final sentence, try to construct a new one:
         if not subject:
             resp = random.choice(NOOP_RESPONSES)
-        elif subject == 'REFERS_TO_SELF' and not verb:
+        elif subject == u'REFERS_TO_SELF' and not verb:
             resp = random.choice(COMMENTS_ABOUT_SELF)
         else:
            resp = construct_response(subject, dobject, verb, verb_pos, adjective)
@@ -179,7 +191,7 @@ def respond(sentence):
     if not resp:
         resp = random.choice(NOOP_RESPONSES)
 
-    logging.debug("Returning phrase '{}'".format(resp))
+    logging.debug(u"Returning phrase '%s'", resp)
     # Check that we're not going to say anything obviously offensive
     filter_response(resp)
 
@@ -189,6 +201,8 @@ def filter_response(resp):
     """Don't allow any words to match our filter list"""
     parsed = TextBlob(resp)
     for word in parsed.words:
+        if '@' in word or '#' in word or '!' in word:
+            raise UnacceptableUtteranceException()
         for s in FILTER_WORDS:
             if word.lower().startswith(s):
                 raise UnacceptableUtteranceException()

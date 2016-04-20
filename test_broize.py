@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import pytest
 
 from broize import *
@@ -7,7 +9,7 @@ def test_random_utterance():
     random.seed(0)
     sent = "abcd"  # Something unparseable
     resp = broback(sent)
-    assert resp == NOOP_RESPONSES[0]
+    assert resp == NOOP_RESPONSES[-1]
 
 def test_contains_reference_to_user():
     """An utterance where the user mentions themselves should specifically return a phrase starting with 'You'"""
@@ -39,4 +41,11 @@ def test_strip_offensive_words():
 
 def test_strip_punctuation():
     """Removing most punctuation is one way to ensure that the bot doesn't include hashtags or @-signs, which are potential vectors for harrassment"""
-    pass
+    sent = "I am a #snakeperson"
+    with pytest.raises(UnacceptableUtteranceException):
+        broback(sent)
+
+
+def test_unicode():
+    """Bros love internationalization"""
+    broback(u"☃")  # Unicode snowman
