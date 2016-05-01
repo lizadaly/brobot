@@ -1,59 +1,66 @@
-# -*- coding: utf-8 -*-
-
+from __future__ import print_function, unicode_literals
 import random
-from textblob import TextBlob, Word
+import logging
+import os
+
+os.environ['NLTK_DATA'] = os.getcwd() + '/nltk_data'
+
+from textblob import TextBlob
 from config import FILTER_WORDS
 
-import logging
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
-logging.basicConfig(level=logging.DEBUG)
 
-# Sentences we'll respond with if we have no idea what the user is going to say
-NOOP_RESPONSES = [
-    u"Yeah it's not that simple",
-    u"sorry not sorry",
-    u"i have mad react skills",
-    u"code hard bro",
-    u"Want to bro down and crush code?",
+# Sentences we'll respond with if we have no idea what the user just said
+NONE_RESPONSES = [
+    "Yeah it's not that simple",
+    "Meet me at the foosball table, bro?"
+    "code hard bro",
+    "Want to bro down and crush code?",
 ]
 
 # If the user tries to tell us something about ourselves
 COMMENTS_ABOUT_SELF = [
-    u"You're just jealous",
-    u"I worked really hard on that",
-    u"My Klout score is {}".format(random.randint(100, 500)),
+    "You're just jealous",
+    "I worked really hard on that",
+    "My Klout score is {}".format(random.randint(100, 500)),
 ]
 
 SELF_VERBS_WITH_DOBJECT_CAPS_PLURAL = [
-    u'My last startup totally crushed the {dobject} vertical',
-    u'Were you aware I was a serial entrepreneur in the {dobject} sector?',
-    u"My startup is Uber for {dobject}",
-    u'I really consider myself an expert on {dobject}',
+    "My last startup totally crushed the {dobject} vertical",
+    "Were you aware I was a serial entrepreneur in the {dobject} sector?",
+    "My startup is Uber for {dobject}",
+    "I really consider myself an expert on {dobject}",
 ]
 
 SELF_VERBS_WITH_DOBJECT_LOWER = [
-    u'Yeah but I know a lot about {dobject}',
-    u'My bros always ask me about {dobject}',
+    "Yeah but I know a lot about {dobject}",
+    "My bros always ask me about {dobject}",
 ]
 
 SELF_VERBS_WITH_ADJECTIVE = [
-    u"I'm personally building the {adjective} Economy",
-    u"I consider myself to be a {adjective}preneur",
+    "I'm personally building the {adjective} Economy",
+    "I consider myself to be a {adjective}preneur",
 ]
 
-# Raise this (uncaught) exception if the response was going to trigger our blacklist
+
 class UnacceptableUtteranceException(Exception):
+    """Raise this (uncaught) exception if the response was going to trigger our blacklist"""
     pass
 
 
 def starts_with_vowel(word):
+    """Check for pronoun compability -- 'a' vs. 'an'"""
     return True if word[0] in 'aeiou' else False
 
+
 def broback(sentence):
-
+    """Main program loop: select a response for the input sentence and return it"""
+    logger.info("Broback: respond to %s", sentence)
     resp = respond(sentence)
-
     return resp
+
 
 def find_subject(sent):
     """Given a sentence, find a preferred subject to respond with. Returns None if no candidate
@@ -68,24 +75,20 @@ def find_subject(sent):
         elif p == 'PRP' and w == 'You':
             subject = 'REFERS_TO_SELF'
     if subject:
-        logging.debug(u"Found subject: %s", subject)
+        logger.info("Found subject: %s", subject)
     return subject
 
 def find_object(sent):
     """Given a sentence, find the best candidate object."""
     dobject = None
 
-    # Prefer noun phrases if possible
-    for np in sent.noun_phrases:
-        dobject = np
     if not dobject:
         for w, p in sent.pos_tags:
-            print w, p
             if p == 'NN':  # This is a noun
                 dobject = w
                 break
     if dobject:
-        logging.debug(u"Found dobject: %s", dobject)
+        logger.info("Found dobject: %s", dobject)
 
     return dobject
 
@@ -93,7 +96,6 @@ def find_adjective(sent):
     """Given a sentence, find the best candidate adjective."""
     adj = None
     for w, p in sent.pos_tags:
-        print w, p
         if p == 'JJ':  # This is an adjective
             adj = w
             break
@@ -101,7 +103,7 @@ def find_adjective(sent):
 
 # Reference for verb part-of-speech tags:
 # https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
-def find_verb(sent, subject=None, dobject=None):
+def find_verb(sent):
     """Pick a candidate verb for the sentence. Influenced by whether we already know that we've
     selected a subject or direct object"""
     verb = None
@@ -112,10 +114,10 @@ def find_verb(sent, subject=None, dobject=None):
             pos = p
             break
     if verb:
-        logging.debug(u"Found verb: %s", verb)
+        logger.info("Found verb: %s", verb)
     return verb, pos
 
-def construct_response(subject, dobject, verb, verb_pos, adjective):
+def construct_response(subject, dobject, verb):
     """No special cases matched, so we're going to try to construct a full sentence that uses as much
     of the user's input as possible"""
     resp = []
@@ -125,47 +127,45 @@ def construct_response(subject, dobject, verb, verb_pos, adjective):
     # from the user, or 'you' or 'I', in which case we might need to change the tense for some
     # irregular verbs.
     if verb:
-        if verb.lemma == u'be':
-            if subject.lower() == u'you':
+        verb_word = verb[0]
+        if verb_word in ('be', 'am', 'is', "'m"):  # This would be an excellent place to use lemmas!
+            if subject.lower() == 'you':
                 # The bot will always tell the person they aren't whatever they said they were
-                resp.append(u"aren't really")
+                resp.append("aren't really")
             else:
-                resp.append(verb)
+                resp.append(verb_word)
     if dobject:
         if starts_with_vowel(dobject):
-            resp.append(u"an")
+            resp.append("an")
         else:
-            resp.append(u"a")
+            resp.append("a")
         resp.append(dobject)
 
-    resp.append(random.choice((u"tho", u"bro", u"lol", u"bruh", u"smh", u"")))
+    resp.append(random.choice(("tho", "bro", "lol", "bruh", "smh", "")))
 
     if len(resp) > 0:
         return " ".join(resp)
 
-
-def respond(sentence):
-    resp = None
+def find_candidate_parts_of_speech(parsed):
+    """Given a parsed input, find the best subject, direct object, adjective, and verb to match their input.
+    Returns a tuple of subject, dobject, adjective, verb any of which may be None if there was no good match"""
     subject = None
     dobject = None
     adjective = None
     verb = None
-
-    parsed = TextBlob(sentence)
-
-    # Loop through all the sentences, if more than one. This will help extract the most relevant
-    # response text even across multiple sentences (for example if there was no obvious direct object
-    # in one sentence
-
     for sent in parsed.sentences:
         subject = find_subject(sent)
         dobject = find_object(sent)
         adjective = find_adjective(sent)
+        verb = find_verb(sent)
+    logger.info("Subject=%s, dobject=%s, adjective=%s, verb=%s", subject, dobject, adjective, verb)
+    return subject, dobject, adjective, verb
 
-    # If we said something about the bot and used some kind of direct object, construct the
-    # sentence around that
-    logging.debug("Subject=%s, dobject=%s, adjective=%s", subject, dobject, adjective)
+def check_for_comment_about_bot(subject, dobject, adjective):
+    """Check if the user's input was about the bot itself, in which case try to fashion a response
+    that feels right based on their input. Returns the new best sentence, or None."""
 
+    resp = None
     if subject == u'REFERS_TO_SELF' and (dobject or adjective):
         if dobject:
             if random.choice((True, False)):
@@ -174,24 +174,35 @@ def respond(sentence):
                 resp = random.choice(SELF_VERBS_WITH_DOBJECT_LOWER).format(**{'dobject': dobject})
         else:
             resp = random.choice(SELF_VERBS_WITH_ADJECTIVE).format(**{'adjective': adjective})
-    else:
-        for sent in parsed.sentences:
-            verb, verb_pos = find_verb(sent)
+    return resp
+
+def respond(sentence):
+    """Parse the user's inbound sentence and find candidate terms that make up a best-fit response"""
+    parsed = TextBlob(sentence)
+
+    # Loop through all the sentences, if more than one. This will help extract the most relevant
+    # response text even across multiple sentences (for example if there was no obvious direct object
+    # in one sentence
+    subject, dobject, adjective, verb = find_candidate_parts_of_speech(parsed)
+
+    # If we said something about the bot and used some kind of direct object, construct the
+    # sentence around that, discarding the other candidates
+    resp = check_for_comment_about_bot(subject, dobject, adjective)
 
     if not resp:
         # If we didn't override the final sentence, try to construct a new one:
         if not subject:
-            resp = random.choice(NOOP_RESPONSES)
+            resp = random.choice(NONE_RESPONSES)
         elif subject == u'REFERS_TO_SELF' and not verb:
             resp = random.choice(COMMENTS_ABOUT_SELF)
         else:
-           resp = construct_response(subject, dobject, verb, verb_pos, adjective)
+            resp = construct_response(subject, dobject, verb)
 
     # If we got through all that with nothing, use a random response
     if not resp:
-        resp = random.choice(NOOP_RESPONSES)
+        resp = random.choice(NONE_RESPONSES)
 
-    logging.debug(u"Returning phrase '%s'", resp)
+    logger.info("Returning phrase '%s'", resp)
     # Check that we're not going to say anything obviously offensive
     filter_response(resp)
 

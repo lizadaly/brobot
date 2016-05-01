@@ -1,25 +1,37 @@
 # -*- coding: utf-8 -*-
 
+import random
+
 import pytest
+
+random.seed(0)
 
 from broize import *
 
 def test_random_utterance():
     """An utterance which is unparsable should return one of the random responses"""
-    random.seed(0)
     sent = "abcd"  # Something unparseable
     resp = broback(sent)
-    assert resp == NOOP_RESPONSES[-1]
+    assert resp == NONE_RESPONSES[-1]
 
 def test_contains_reference_to_user():
     """An utterance where the user mentions themselves should specifically return a phrase starting with 'You'"""
+    sent = "I love you"
+    resp = broback(sent)
+    assert resp.startswith("You ")
+
+def test_negs_user():
+    """An utterance where the user says 'I am' <something> should specifically tell them they aren't that thing"""
+    sent = "I am good at Python programming"
+    resp = broback(sent)
+    assert resp.startswith("You aren't really")
+
     sent = "I'm good at Python programming"
     resp = broback(sent)
-    assert resp.startswith('You')
+    assert resp.startswith("You aren't really")
 
 def test_contains_reference_to_bot():
     """An utterance where the user directs something at the bot itself should return a canned response"""
-    random.seed(0)
     sent = "You are lame"
     resp = broback(sent)
     assert resp == 'I consider myself to be a lamepreneur'
