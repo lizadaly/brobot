@@ -11,7 +11,7 @@ from config import FILTER_WORDS
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
-
+# start:example-none.py
 # Sentences we'll respond with if we have no idea what the user just said
 NONE_RESPONSES = [
     "Yeah it's not that simple",
@@ -19,31 +19,38 @@ NONE_RESPONSES = [
     "code hard bro",
     "Want to bro down and crush code?",
 ]
+# end
 
-# If the user tries to tell us something about ourselves
+# start:example-self.py
+# If the user tries to tell us something about ourselves, use one of these responses
 COMMENTS_ABOUT_SELF = [
     "You're just jealous",
     "I worked really hard on that",
     "My Klout score is {}".format(random.randint(100, 500)),
 ]
+# end
 
+# start:example-dobject.py
+# Template for responses that include a direct object which is indefinite/uncountable
 SELF_VERBS_WITH_DOBJECT_CAPS_PLURAL = [
     "My last startup totally crushed the {dobject} vertical",
     "Were you aware I was a serial entrepreneur in the {dobject} sector?",
     "My startup is Uber for {dobject}",
     "I really consider myself an expert on {dobject}",
 ]
+# end
 
 SELF_VERBS_WITH_DOBJECT_LOWER = [
     "Yeah but I know a lot about {dobject}",
     "My bros always ask me about {dobject}",
 ]
 
+# start:example-adjective.py
 SELF_VERBS_WITH_ADJECTIVE = [
     "I'm personally building the {adjective} Economy",
     "I consider myself to be a {adjective}preneur",
 ]
-
+# end
 
 class UnacceptableUtteranceException(Exception):
     """Raise this (uncaught) exception if the response was going to trigger our blacklist"""
@@ -62,6 +69,7 @@ def broback(sentence):
     return resp
 
 
+# start:example-subject.py
 def find_subject(sent):
     """Given a sentence, find a preferred subject to respond with. Returns None if no candidate
     subject is found in the input"""
@@ -77,6 +85,8 @@ def find_subject(sent):
     if subject:
         logger.info("Found subject: %s", subject)
     return subject
+# end
+
 
 def find_object(sent):
     """Given a sentence, find the best candidate object."""
@@ -101,6 +111,7 @@ def find_adjective(sent):
             break
     return adj
 
+# start:example-verb.py
 # Reference for verb part-of-speech tags:
 # https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 def find_verb(sent):
@@ -116,7 +127,9 @@ def find_verb(sent):
     if verb:
         logger.info("Found verb: %s", verb)
     return verb, pos
+# end
 
+# start:example-construct-response.py
 def construct_response(subject, dobject, verb):
     """No special cases matched, so we're going to try to construct a full sentence that uses as much
     of the user's input as possible"""
@@ -145,7 +158,9 @@ def construct_response(subject, dobject, verb):
 
     if len(resp) > 0:
         return " ".join(resp)
+# end
 
+# start:example-find-candidate.py
 def find_candidate_parts_of_speech(parsed):
     """Given a parsed input, find the best subject, direct object, adjective, and verb to match their input.
     Returns a tuple of subject, dobject, adjective, verb any of which may be None if there was no good match"""
@@ -160,7 +175,9 @@ def find_candidate_parts_of_speech(parsed):
         verb = find_verb(sent)
     logger.info("Subject=%s, dobject=%s, adjective=%s, verb=%s", subject, dobject, adjective, verb)
     return subject, dobject, adjective, verb
+# end
 
+# start:example-check-for-self.py
 def check_for_comment_about_bot(subject, dobject, adjective):
     """Check if the user's input was about the bot itself, in which case try to fashion a response
     that feels right based on their input. Returns the new best sentence, or None."""
@@ -175,7 +192,9 @@ def check_for_comment_about_bot(subject, dobject, adjective):
         else:
             resp = random.choice(SELF_VERBS_WITH_ADJECTIVE).format(**{'adjective': adjective})
     return resp
+# end
 
+# start:example-respond.py
 def respond(sentence):
     """Parse the user's inbound sentence and find candidate terms that make up a best-fit response"""
     parsed = TextBlob(sentence)
@@ -207,7 +226,9 @@ def respond(sentence):
     filter_response(resp)
 
     return resp
+# end
 
+# start:example-filter.py
 def filter_response(resp):
     """Don't allow any words to match our filter list"""
     parsed = TextBlob(resp)
@@ -217,3 +238,4 @@ def filter_response(resp):
         for s in FILTER_WORDS:
             if word.lower().startswith(s):
                 raise UnacceptableUtteranceException()
+# end

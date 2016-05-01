@@ -34,7 +34,7 @@ def test_contains_reference_to_bot():
     """An utterance where the user directs something at the bot itself should return a canned response"""
     sent = "You are lame"
     resp = broback(sent)
-    assert resp == 'I consider myself to be a lamepreneur'
+    assert 'lame' in resp
 
 def test_reuses_subject():
     """If the user tells us about some kind of subject, we should mention it in our response"""
