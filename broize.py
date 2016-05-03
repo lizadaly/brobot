@@ -15,7 +15,7 @@ logger.setLevel(logging.DEBUG)
 # Sentences we'll respond with if we have no idea what the user just said
 NONE_RESPONSES = [
     "Yeah it's not that simple",
-    "Meet me at the foosball table, bro?"
+    "Meet me at the foosball table, bro?",
     "code hard bro",
     "Want to bro down and crush code?",
 ]
