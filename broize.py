@@ -8,16 +8,40 @@ os.environ['NLTK_DATA'] = os.getcwd() + '/nltk_data'
 from textblob import TextBlob
 from config import FILTER_WORDS
 
+logging.basicConfig()
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
+
+# start:example-hello.py
+# Sentences we'll respond with if the user greeted us
+GREETING_KEYWORDS = (
+    "hello",
+    "hi",
+    "greetings",
+    "sup",
+    "what's up",
+)
+GREETING_RESPONSES = [
+    "'sup bro",
+    "hey",
+    "*nods*",
+    "hey you get my snap?"
+]
+def check_for_greeting(sentence):
+    """If any of the words in the user's input was a greeting,
+    return a greeting response"""
+    for word in sentence.words:
+        if word in GREETING_KEYWORDS:
+            return random.choice(GREETING_RESPONSES)
+# end
 
 # start:example-none.py
 # Sentences we'll respond with if we have no idea what the user just said
 NONE_RESPONSES = [
-    "Yeah it's not that simple",
-    "Meet me at the foosball table, bro?",
+    "uh whatever",
+    "meet me at the foosball table, bro?",
     "code hard bro",
-    "Want to bro down and crush code?",
+    "want to bro down and crush code?",
 ]
 # end
 
@@ -77,11 +101,12 @@ def find_subject(sent):
 
     for w, p in sent.pos_tags:
         # Disambiguate pronouns
-        if p == 'PRP' and w == 'I':
+        if p == 'PRP' and w.lower() == 'you':
+            subject = 'I'
+        elif p == 'PRP' and w == 'I':
             # If the user mentioned themselves, then they will definitely be the subject
             subject = 'You'
-        elif p == 'PRP' and w == 'You':
-            subject = 'REFERS_TO_SELF'
+
     if subject:
         logger.info("Found subject: %s", subject)
     return subject
@@ -183,7 +208,7 @@ def check_for_comment_about_bot(subject, dobject, adjective):
     that feels right based on their input. Returns the new best sentence, or None."""
 
     resp = None
-    if subject == u'REFERS_TO_SELF' and (dobject or adjective):
+    if subject == 'I' and (dobject or adjective):
         if dobject:
             if random.choice((True, False)):
                 resp = random.choice(SELF_VERBS_WITH_DOBJECT_CAPS_PLURAL).format(**{'dobject': dobject.pluralize().capitalize()})
@@ -194,10 +219,25 @@ def check_for_comment_about_bot(subject, dobject, adjective):
     return resp
 # end
 
+def preprocess_text(sentence):
+    """Handle some weird edge cases in parsing, like 'i' needing to be capitalized
+    to be correctly identified as a pronoun"""
+    cleaned = []
+    words = sentence.split(' ')
+    for w in words:
+        if w == 'i':
+            w = 'I'
+        if w == "i'm":
+            w = "I'm"
+        cleaned.append(w)
+
+    return ' '.join(cleaned)
+
 # start:example-respond.py
 def respond(sentence):
     """Parse the user's inbound sentence and find candidate terms that make up a best-fit response"""
-    parsed = TextBlob(sentence)
+    cleaned = preprocess_text(sentence)
+    parsed = TextBlob(cleaned)
 
     # Loop through all the sentences, if more than one. This will help extract the most relevant
     # response text even across multiple sentences (for example if there was no obvious direct object
@@ -208,11 +248,15 @@ def respond(sentence):
     # sentence around that, discarding the other candidates
     resp = check_for_comment_about_bot(subject, dobject, adjective)
 
+    # If we just greeted the bot, we'll use a return greeting
+    if not resp:
+        resp = check_for_greeting(parsed)
+
     if not resp:
         # If we didn't override the final sentence, try to construct a new one:
         if not subject:
             resp = random.choice(NONE_RESPONSES)
-        elif subject == u'REFERS_TO_SELF' and not verb:
+        elif subject == 'I' and not verb:
             resp = random.choice(COMMENTS_ABOUT_SELF)
         else:
             resp = construct_response(subject, dobject, verb)
