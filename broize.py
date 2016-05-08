@@ -23,8 +23,6 @@ def check_for_greeting(sentence):
     for word in sentence.words:
         if word in GREETING_KEYWORDS:
             return random.choice(GREETING_RESPONSES)
-# end
-
 # start:example-none.py
 # Sentences we'll respond with if we have no idea what the user just said
 NONE_RESPONSES = [
@@ -44,27 +42,6 @@ COMMENTS_ABOUT_SELF = [
 ]
 # end
 
-# start:example-dobject.py
-# Template for responses that include a direct object which is indefinite/uncountable
-SELF_VERBS_WITH_DOBJECT_CAPS_PLURAL = [
-    "My last startup totally crushed the {dobject} vertical",
-    "Were you aware I was a serial entrepreneur in the {dobject} sector?",
-    "My startup is Uber for {dobject}",
-    "I really consider myself an expert on {dobject}",
-]
-# end
-
-SELF_VERBS_WITH_DOBJECT_LOWER = [
-    "Yeah but I know a lot about {dobject}",
-    "My bros always ask me about {dobject}",
-]
-
-# start:example-adjective.py
-SELF_VERBS_WITH_ADJECTIVE = [
-    "I'm personally building the {adjective} Economy",
-    "I consider myself to be a {adjective}preneur",
-]
-# end
 
 class UnacceptableUtteranceException(Exception):
     """Raise this (uncaught) exception if the response was going to trigger our blacklist"""
@@ -89,18 +66,29 @@ def find_subject(sent):
     subject is found in the input"""
     subject = None
 
-    for w, p in sent.pos_tags:
+    for word, part_of_speech in sent.pos_tags:
         # Disambiguate pronouns
-        if p == 'PRP' and w.lower() == 'you':
+        if part_of_speech == 'PRP' and word.lower() == 'you':
             subject = 'I'
-        elif p == 'PRP' and w == 'I':
+        elif part_of_speech == 'PRP' and word == 'I':
             # If the user mentioned themselves, then they will definitely be the subject
             subject = 'You'
 
-    if subject:
-        logger.info("Found subject: %s", subject)
     return subject
+
+
 # end
+
+def find_verb(sent):
+    """Pick a candidate verb for the sentence."""
+    verb = None
+    pos = None
+    for word, part_of_speech in sent.pos_tags:
+        if part_of_speech.startswith('VB'):  # This is a verb
+            verb = word
+            pos = part_of_speech
+            break
+    return verb, pos
 
 
 def find_object(sent):
@@ -126,31 +114,17 @@ def find_adjective(sent):
             break
     return adj
 
-# start:example-verb.py
-# Reference for verb part-of-speech tags:
-# https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
-def find_verb(sent):
-    """Pick a candidate verb for the sentence. Influenced by whether we already know that we've
-    selected a subject or direct object"""
-    verb = None
-    pos = None
-    for w, p in sent.pos_tags:
-        if p.startswith('VB'):  # This is a verb
-            verb = w
-            pos = p
-            break
-    if verb:
-        logger.info("Found verb: %s", verb)
-    return verb, pos
-# end
+
 
 # start:example-construct-response.py
 def construct_response(subject, dobject, verb):
     """No special cases matched, so we're going to try to construct a full sentence that uses as much
     of the user's input as possible"""
     resp = []
+
     if subject:
         resp.append(subject)
+
     # We always respond in the present tense, and the subject will always either be a passthrough
     # from the user, or 'you' or 'I', in which case we might need to change the tense for some
     # irregular verbs.
@@ -163,40 +137,19 @@ def construct_response(subject, dobject, verb):
             else:
                 resp.append(verb_word)
     if dobject:
-        if starts_with_vowel(dobject):
-            resp.append("an")
-        else:
-            resp.append("a")
-        resp.append(dobject)
+        pronoun = "an" if starts_with_vowel(dobject) else "a"
+        resp.append(pronoun + " " + dobject)
 
     resp.append(random.choice(("tho", "bro", "lol", "bruh", "smh", "")))
 
-    if len(resp) > 0:
-        return " ".join(resp)
+    return " ".join(resp)
 # end
 
-# start:example-find-candidate.py
-def find_candidate_parts_of_speech(parsed):
-    """Given a parsed input, find the best subject, direct object, adjective, and verb to match their input.
-    Returns a tuple of subject, dobject, adjective, verb any of which may be None if there was no good match"""
-    subject = None
-    dobject = None
-    adjective = None
-    verb = None
-    for sent in parsed.sentences:
-        subject = find_subject(sent)
-        dobject = find_object(sent)
-        adjective = find_adjective(sent)
-        verb = find_verb(sent)
-    logger.info("Subject=%s, dobject=%s, adjective=%s, verb=%s", subject, dobject, adjective, verb)
-    return subject, dobject, adjective, verb
-# end
 
 # start:example-check-for-self.py
 def check_for_comment_about_bot(subject, dobject, adjective):
     """Check if the user's input was about the bot itself, in which case try to fashion a response
     that feels right based on their input. Returns the new best sentence, or None."""
-
     resp = None
     if subject == 'I' and (dobject or adjective):
         if dobject:
@@ -207,6 +160,24 @@ def check_for_comment_about_bot(subject, dobject, adjective):
         else:
             resp = random.choice(SELF_VERBS_WITH_ADJECTIVE).format(**{'adjective': adjective})
     return resp
+
+# Template for responses that include a direct object which is indefinite/uncountable
+SELF_VERBS_WITH_DOBJECT_CAPS_PLURAL = [
+    "My last startup totally crushed the {dobject} vertical",
+    "Were you aware I was a serial entrepreneur in the {dobject} sector?",
+    "My startup is Uber for {dobject}",
+    "I really consider myself an expert on {dobject}",
+]
+
+SELF_VERBS_WITH_DOBJECT_LOWER = [
+    "Yeah but I know a lot about {dobject}",
+    "My bros always ask me about {dobject}",
+]
+
+SELF_VERBS_WITH_ADJECTIVE = [
+    "I'm personally building the {adjective} Economy",
+    "I consider myself to be a {adjective}preneur",
+]
 # end
 
 def preprocess_text(sentence):
@@ -260,6 +231,23 @@ def respond(sentence):
     filter_response(resp)
 
     return resp
+
+def find_candidate_parts_of_speech(parsed):
+    """Given a parsed input, find the best subject, direct object, adjective, and verb to match their input.
+    Returns a tuple of subject, dobject, adjective, verb any of which may be None if there was no good match"""
+    subject = None
+    dobject = None
+    adjective = None
+    verb = None
+    for sent in parsed.sentences:
+        subject = find_subject(sent)
+        dobject = find_object(sent)
+        adjective = find_adjective(sent)
+        verb = find_verb(sent)
+    logger.info("Subject=%s, dobject=%s, adjective=%s, verb=%s", subject, dobject, adjective, verb)
+    return subject, dobject, adjective, verb
+
+
 # end
 
 # start:example-filter.py
