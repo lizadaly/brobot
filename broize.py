@@ -30,6 +30,8 @@ NONE_RESPONSES = [
     "meet me at the foosball table, bro?",
     "code hard bro",
     "want to bro down and crush code?",
+    "I'd like to add you to my professional network on LinkedIn",
+    "Have you closed your seed round, dog?",
 ]
 # end
 
@@ -70,14 +72,10 @@ def find_pronoun(sent):
         # Disambiguate pronouns
         if part_of_speech == 'PRP' and word.lower() == 'you':
             pronoun = 'I'
-            break
         elif part_of_speech == 'PRP' and word == 'I':
             # If the user mentioned themselves, then they will definitely be the pronoun
             pronoun = 'You'
-
     return pronoun
-
-
 # end
 
 def find_verb(sent):
