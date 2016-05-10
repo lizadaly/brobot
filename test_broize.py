@@ -12,7 +12,7 @@ def test_random_utterance():
     """An utterance which is unparsable should return one of the random responses"""
     sent = "abcd"  # Something unparseable
     resp = broback(sent)
-    assert resp == NONE_RESPONSES[-1]
+    assert resp == NONE_RESPONSES[-2]
 
 def test_basic_greetings():
     """The bot should respond sensibly to common greeting words"""
