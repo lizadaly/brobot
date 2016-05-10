@@ -1,5 +1,0 @@
-from textblob import TextBlob
-
-
-def broback(sent):
-    return None
