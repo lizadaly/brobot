@@ -73,6 +73,10 @@ def test_strip_punctuation():
     with pytest.raises(UnacceptableUtteranceException):
         broback(sent)
 
+    sent = "@you are funny"
+    with pytest.raises(UnacceptableUtteranceException):
+        broback(sent)
+
 def test_unicode():
     """Bros love internationalization"""
     broback(u"☃")  # Unicode snowman
