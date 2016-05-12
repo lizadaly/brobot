@@ -21,7 +21,7 @@ GREETING_RESPONSES = ["'sup bro", "hey", "*nods*", "hey you get my snap?"]
 def check_for_greeting(sentence):
     """If any of the words in the user's input was a greeting, return a greeting response"""
     for word in sentence.words:
-        if word in GREETING_KEYWORDS:
+        if word.lower() in GREETING_KEYWORDS:
             return random.choice(GREETING_RESPONSES)
 # start:example-none.py
 # Sentences we'll respond with if we have no idea what the user just said
